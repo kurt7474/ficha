@@ -2,31 +2,83 @@ import streamlit as st
 from docxtpl import DocxTemplate
 import io
 import re
+import json
+import os
+
+# --- Sistema de Histórico Local ---
+ARQUIVO_HISTORICO = 'historico.json'
+
+def carregar_historico():
+    if os.path.exists(ARQUIVO_HISTORICO):
+        try:
+            with open(ARQUIVO_HISTORICO, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except:
+            return {}
+    return {}
+
+def salvar_historico(dados):
+    with open(ARQUIVO_HISTORICO, 'w', encoding='utf-8') as f:
+        json.dump(dados, f, ensure_ascii=False, indent=4)
+
+historico_db = carregar_historico()
+
+def atualizar_historico(chave, valor):
+    if not valor or str(valor).strip() == "": 
+        return
+    if chave not in historico_db:
+        historico_db[chave] = []
+    # Salva apenas se o valor ainda não existir no histórico daquele campo
+    if valor not in historico_db[chave]:
+        historico_db[chave].append(valor)
+        salvar_historico(historico_db)
+
+# Função auxiliar para criar campos com histórico
+def campo_com_historico(label, chave, is_area=False):
+    opcoes = historico_db.get(chave, [])
+    # Cria o selectbox para escolher do histórico
+    escolha = st.selectbox(f"📋 Histórico: {label}", ["(Novo Cadastro)"] + opcoes, key=f"sel_{chave}")
+    
+    # Se for um novo cadastro, o campo fica vazio. Se puxou do histórico, preenche para edição.
+    if escolha == "(Novo Cadastro)":
+        if is_area:
+            return st.text_area(f"Digite: {label}", value="", key=chave)
+        else:
+            return st.text_input(f"Digite: {label}", value="", key=chave)
+    else:
+        if is_area:
+            return st.text_area(f"Confirmar/Editar: {label}", value=escolha, key=chave)
+        else:
+            return st.text_input(f"Confirmar/Editar: {label}", value=escolha, key=chave)
+
 
 # Configuração da página
 st.set_page_config(page_title="Ficha Inteligente", layout="wide")
 
-# Função para limpar todos os campos da interface
+# --- Função corrigida para limpar os dados ---
 def limpar_dados():
-    st.session_state.clear()
+    for key in st.session_state.keys():
+        if key.startswith("sel_"):
+            st.session_state[key] = "(Novo Cadastro)"
+        elif key == "orgao_emissor":
+            st.session_state[key] = "SSP/SP"
+        elif isinstance(st.session_state[key], str):
+            st.session_state[key] = ""
 
-# Função para formatar o CPF no padrão brasileiro
 def formatar_cpf(cpf):
-    cpf_limpo = re.sub(r'\D', '', cpf) # Remove tudo que não for número
+    cpf_limpo = re.sub(r'\D', '', cpf)
     if len(cpf_limpo) == 11:
         return f"{cpf_limpo[:3]}.{cpf_limpo[3:6]}.{cpf_limpo[6:9]}-{cpf_limpo[9:]}"
-    return cpf # Retorna como foi digitado se não tiver 11 números
+    return cpf
 
 st.title("Ficha Inteligente - Gerador de Documentos")
 
-# Botão para limpar a ficha (fica no topo para facilitar)
 col_titulo, col_botao = st.columns([4, 1])
 with col_botao:
     st.button("🧹 Limpar Ficha", on_click=limpar_dados, use_container_width=True)
 
 st.markdown("---")
 
-# Criando abas para organizar o ambiente gráfico
 aba_pessoal, aba_processo, aba_peritos, aba_medica = st.tabs([
     "Dados Pessoais", "Dados do Processo", "Equipe Técnica", "Dados Clínicos/Andamento"
 ])
@@ -43,81 +95,112 @@ with aba_pessoal:
             "SSP/RN", "SSP/AL", "SSP/SE", "SSP/PI", "SSP/PA", "SSP/AM", "SSP/RO", "SSP/AC", 
             "SSP/AP", "SSP/RR", "SSP/TO", "Outro"
         ], key="orgao_emissor")
-        cargo = st.text_input("Profissão", key="cargo")
+        
+        # Campo com Histórico: Profissão
+        st.markdown("---")
+        cargo = campo_com_historico("Profissão", "cargo")
+        
     with col2:
         filiacaomae = st.text_input("Filiação (Mãe)", key="filiacaomae")
         cpf = st.text_input("CPF nº (Digite apenas números)", key="cpf")
         telefone = st.text_input("Telefone", key="telefone")
     
+    st.markdown("---")
     endereco = st.text_input("Endereço", key="endereco")
 
 with aba_processo:
     col3, col4 = st.columns(2)
     with col3:
         processo = st.text_input("Nº do Processo", key="processo")
-        advogado = st.text_input("Advogado", key="advogado")
+        st.markdown("---")
+        # Campos com Histórico
+        advogado = campo_com_historico("Advogado", "advogado")
+        st.markdown("---")
         email = st.text_input("E-mail", key="email")
     with col4:
-        comarca = st.text_input("Comarca", key="comarca")
-        oabn = st.text_input("OAB Nº", key="oabn")
-        custas = st.text_input("Juntada de Custas", key="custas")
+        # Campos com Histórico
+        comarca = campo_com_historico("Comarca", "comarca")
+        st.markdown("---")
+        oabn = campo_com_historico("OAB Nº", "oabn")
+        st.markdown("---")
+        custas = campo_com_historico("Juntada de Custas", "custas")
 
 with aba_peritos:
-    perito = st.text_input("Perito Principal", key="perito")
-    peritoesp = st.text_input("Perito Especialista", key="peritoesp")
-    assisa = st.text_input("Assistente Técnico do Autor", key="assisa")
-    assisb = st.text_input("Assistente Técnico do Réu", key="assisb")
+    col5, col6 = st.columns(2)
+    with col5:
+        perito = campo_com_historico("Perito Principal", "perito")
+        st.markdown("---")
+        assisa = campo_com_historico("Assistente Técnico do Autor", "assisa")
+    with col6:
+        peritoesp = campo_com_historico("Perito Especialista", "peritoesp")
+        st.markdown("---")
+        assisb = campo_com_historico("Assistente Técnico do Réu", "assisb")
 
 with aba_medica:
     queixa = st.text_area("Queixa", key="queixa")
-    cid10 = st.text_input("CID10 + Patologia", key="cid10")
-    andamento = st.text_area("Andamento", key="andamento")
+    st.markdown("---")
+    cid10 = campo_com_historico("CID10 + Patologia", "cid10")
+    st.markdown("---")
+    andamento = campo_com_historico("Andamento", "andamento", is_area=True)
 
 st.markdown("---")
 
 # Botão para gerar o documento
 if st.button("Gerar Ficha Inteligente", type="primary"):
-    doc = DocxTemplate("ficha.docx")
     
-    # Dicionário com o contexto preenchido na interface e as formatações
-    # O .upper() deixa tudo em MAIÚSCULO e o .lower() em minúsculo
-    contexto = {
-        "nome": nome.upper(),
-        "filiacaopai": filiacaopai.upper(),
-        "filiacaomae": filiacaomae.upper(),
-        "rg": f"{rg} - {orgao_emissor}" if rg else "", # Junta o RG com o Estado
-        "cpf": formatar_cpf(cpf),
-        "cargo": cargo.upper(),
-        "endereço": endereco.upper(),
-        "processo": processo,
-        "comarca": comarca.upper(),
-        "perito": perito.upper(),
-        "peritoesp": peritoesp.upper(),
-        "assisa": assisa.upper(),
-        "assisb": assisb.upper(),
-        "custas": custas,
-        "advogado": advogado.upper(),
-        "oabn": oabn,
-        "email": email.lower(),
-        "queixa": queixa.upper(),
-        "cid10": cid10.upper(),
-        "andamento": andamento.upper()
-    }
-    
-    # Renderiza o documento com os dados formatados
-    doc.render(contexto)
-    
-    # Salva em memória para o usuário baixar
-    bio = io.BytesIO()
-    doc.save(bio)
-    
-    # Cria o nome do arquivo: NOME + PROCESSO + AT.docx
-    nome_arquivo = f"{nome.upper()} {processo} AT.docx"
-    
-    st.success("✅ Ficha gerada com sucesso com as novas formatações!")
-    st.download_button(
-        label="📥 Baixar Documento Preenchido",
-        data=bio.getvalue(),
-        file_name=nome_arquivo,
-        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-    )
+    # 1. Salvar as novas entradas no arquivo historico.json
+    atualizar_historico("cargo", cargo)
+    atualizar_historico("advogado", advogado)
+    atualizar_historico("comarca", comarca)
+    atualizar_historico("oabn", oabn)
+    atualizar_historico("custas", custas)
+    atualizar_historico("perito", perito)
+    atualizar_historico("peritoesp", peritoesp)
+    atualizar_historico("assisa", assisa)
+    atualizar_historico("assisb", assisb)
+    atualizar_historico("cid10", cid10)
+    atualizar_historico("andamento", andamento)
+
+    # 2. Renderizar o Documento
+    try:
+        doc = DocxTemplate("ficha.docx")
+        
+        contexto = {
+            "nome": nome.upper(),
+            "filiacaopai": filiacaopai.upper(),
+            "filiacaomae": filiacaomae.upper(),
+            "rg": f"{rg} - {orgao_emissor}" if rg else "",
+            "cpf": formatar_cpf(cpf),
+            "cargo": cargo.upper(),
+            "endereço": endereco.upper(),
+            "processo": processo,
+            "comarca": comarca.upper(),
+            "perito": perito.upper(),
+            "peritoesp": peritoesp.upper(),
+            "assisa": assisa.upper(),
+            "assisb": assisb.upper(),
+            "custas": custas,
+            "advogado": advogado.upper(),
+            "oabn": oabn,
+            "email": email.lower(),
+            "queixa": queixa.upper(),
+            "cid10": cid10.upper(),
+            "andamento": andamento.upper()
+        }
+        
+        doc.render(contexto)
+        
+        bio = io.BytesIO()
+        doc.save(bio)
+        
+        nome_arquivo = f"{nome.upper()} {processo} AT.docx"
+        
+        st.success("✅ Ficha gerada com sucesso! Os novos itens já foram salvos no seu histórico.")
+        st.download_button(
+            label="📥 Baixar Documento Preenchido",
+            data=bio.getvalue(),
+            file_name=nome_arquivo,
+            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        )
+    except Exception as e:
+        st.error(f"Erro ao gerar o documento. Certifique-se de que o arquivo 'ficha.docx' está na mesma pasta. Erro: {e}")
