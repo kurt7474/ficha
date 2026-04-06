@@ -2,205 +2,224 @@ import streamlit as st
 from docxtpl import DocxTemplate
 import io
 import re
-import json
-import os
 
-# --- Sistema de Histórico Local ---
-ARQUIVO_HISTORICO = 'historico.json'
+# --- CONFIGURAÇÃO DA PÁGINA ---
+st.set_page_config(
+    page_title="Ficha Inteligente - TJSP",
+    page_icon="⚕️",
+    layout="wide",
+    initial_sidebar_state="collapsed"
+)
 
-def carregar_historico():
-    if os.path.exists(ARQUIVO_HISTORICO):
-        try:
-            with open(ARQUIVO_HISTORICO, 'r', encoding='utf-8') as f:
-                return json.load(f)
-        except:
-            return {}
-    return {}
+# --- ESTILIZAÇÃO CSS AVANÇADA (CORES FRIAS E ABAS SÓLIDAS) ---
+st.markdown("""
+    <style>
+        .block-container {
+            max-width: 1100px;
+            padding-top: 2rem;
+        }
 
-def salvar_historico(dados):
-    with open(ARQUIVO_HISTORICO, 'w', encoding='utf-8') as f:
-        json.dump(dados, f, ensure_ascii=False, indent=4)
+        /* Banner de Cabeçalho Atualizado */
+        .header-banner {
+            background-color: #1E3A8A; 
+            padding: 25px;
+            border-radius: 12px;
+            text-align: center;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .header-banner h1 {
+            color: white !important;
+            margin: 0;
+            font-size: 2.2rem;
+            letter-spacing: 1px;
+        }
+        .header-banner p {
+            color: #BFDBFE;
+            margin: 5px 0 0 0;
+            font-size: 1.2rem;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
 
-historico_db = carregar_historico()
+        /* Ajuste das Abas (Pastas) para Cores Frias e Visíveis */
+        .stTabs [data-baseweb="tab-list"] {
+            gap: 10px;
+            background-color: #F1F5F9;
+            padding: 10px 10px 0 10px;
+            border-radius: 8px;
+        }
+        .stTabs [data-baseweb="tab"] {
+            height: 50px;
+            background-color: #E2E8F0; /* Cinza claro frio */
+            border-radius: 8px 8px 0 0;
+            color: #475569;
+            font-weight: 600;
+            border: 1px solid #CBD5E1;
+        }
+        /* Aba Selecionada */
+        .stTabs [aria-selected="true"] {
+            background-color: #1E40AF !important; /* Azul Sólido */
+            color: white !important;
+            border: 1px solid #1E40AF;
+        }
 
-def atualizar_historico(chave, valor):
-    if not valor or str(valor).strip() == "": 
-        return
-    if chave not in historico_db:
-        historico_db[chave] = []
-    # Salva apenas se o valor ainda não existir no histórico daquele campo
-    if valor not in historico_db[chave]:
-        historico_db[chave].append(valor)
-        salvar_historico(historico_db)
+        /* Estilização dos Botões */
+        div.stButton > button[kind="primary"] {
+            background-color: #1E40AF !important;
+            color: white !important;
+            font-weight: bold;
+            border-radius: 8px;
+        }
+        div.stButton > button[kind="secondary"] {
+            background-color: #64748B !important; /* Slate */
+            color: white !important;
+            border-radius: 8px;
+        }
+    </style>
+""", unsafe_allow_html=True)
 
-# Função auxiliar para criar campos com histórico
-def campo_com_historico(label, chave, is_area=False):
-    opcoes = historico_db.get(chave, [])
-    # Cria o selectbox para escolher do histórico
-    escolha = st.selectbox(f"📋 Histórico: {label}", ["(Novo Cadastro)"] + opcoes, key=f"sel_{chave}")
-    
-    # Se for um novo cadastro, o campo fica vazio. Se puxou do histórico, preenche para edição.
-    if escolha == "(Novo Cadastro)":
-        if is_area:
-            return st.text_area(f"Digite: {label}", value="", key=chave)
-        else:
-            return st.text_input(f"Digite: {label}", value="", key=chave)
-    else:
-        if is_area:
-            return st.text_area(f"Confirmar/Editar: {label}", value=escolha, key=chave)
-        else:
-            return st.text_input(f"Confirmar/Editar: {label}", value=escolha, key=chave)
+# --- INICIALIZAÇÃO DO ESTADO ---
+if 'lista_peritos' not in st.session_state:
+    st.session_state.lista_peritos = [
+        "PEDRO DEMÉTRIO HAICK – CRM: 217.178, RG: 48.725.734-92, CPF: 391.134.878-92",
+        "PEDRO LUIS DOS SANTOS PRIOR PEREIRA DA SILVA – CRM: 162862, RG: 44.894.580-0, CPF: 378.342.678-25",
+        "AARON ÉSSIO PEREIRA GRANDIZOLI, CRM: 223.536 RG: 39.369.333-8 CPF: 458.508.618-82",
+        "ABRÃO MOISÉS ALTMAN, CRM: 1477, CPF: 048.942.948-34, NIT: 1.001.877.456-0",
+        "MILTON ANTONIO PAPI, CRM: 81405, CPF: 477.275.190-49, NIT: 1.140.372.913-6",
+        "MAURICI ARAGÃO TAVARES, CRM: 33.006, CPF: 327.796.407/82, NIT: 10112466181",
+        "LUCAS PEDROSO FERNANDES FERREIRA LEAL, CRM: 124.83, CPF: 314.508.888/28, NIT: 119835377/18",
+        "DIEGO ABAD DOS SANTOS, CRM: 120.907, CPF: 296.924.128-57"
+    ]
 
+campos_hist = ["cargo", "comarca", "advogado", "oabn", "email", "custas", "cid10", "andamento"]
+for c in campos_hist:
+    if f"hist_{c}" not in st.session_state:
+        st.session_state[f"hist_{c}"] = []
 
-# Configuração da página
-st.set_page_config(page_title="Ficha Inteligente", layout="wide")
-
-# --- Função corrigida para limpar os dados ---
-def limpar_dados():
-    for key in st.session_state.keys():
-        if key.startswith("sel_"):
-            st.session_state[key] = "(Novo Cadastro)"
-        elif key == "orgao_emissor":
-            st.session_state[key] = "SSP/SP"
-        elif isinstance(st.session_state[key], str):
+# --- FUNÇÕES ---
+def limpar_tudo():
+    for key in list(st.session_state.keys()):
+        if key not in ['lista_peritos'] + [f"hist_{c}" for c in campos_hist]:
             st.session_state[key] = ""
 
 def formatar_cpf(cpf):
-    cpf_limpo = re.sub(r'\D', '', cpf)
-    if len(cpf_limpo) == 11:
-        return f"{cpf_limpo[:3]}.{cpf_limpo[3:6]}.{cpf_limpo[6:9]}-{cpf_limpo[9:]}"
-    return cpf
+    c = re.sub(r'\D', '', cpf)
+    return f"{c[:3]}.{c[3:6]}.{c[6:9]}-{c[9:]}" if len(c) == 11 else cpf
 
-st.title("Ficha Inteligente - Gerador de Documentos")
+def salvar_hist(campo, valor):
+    if valor and valor.strip():
+        chave = f"hist_{campo}"
+        if valor.strip().upper() not in [x.upper() for x in st.session_state[chave]]:
+            st.session_state[chave].append(valor.strip())
 
-col_titulo, col_botao = st.columns([4, 1])
-with col_botao:
-    st.button("🧹 Limpar Ficha", on_click=limpar_dados, use_container_width=True)
+# --- LAYOUT ---
+st.markdown("""
+    <div class="header-banner">
+        <h1>FICHA INTELIGENTE</h1>
+        <p>TJ/SP - PERÍCIA ACIDENTÁRIA</p>
+    </div>
+""", unsafe_allow_html=True)
 
-st.markdown("---")
+col_e, col_c, col_d = st.columns([0.5, 9, 0.5])
 
-aba_pessoal, aba_processo, aba_peritos, aba_medica = st.tabs([
-    "Dados Pessoais", "Dados do Processo", "Equipe Técnica", "Dados Clínicos/Andamento"
-])
+with col_c:
+    # Botão de limpeza ajustado
+    c_espaço, c_limpa = st.columns([7, 2])
+    with c_limpa:
+        st.button("🧹 LIMPAR FORMULÁRIO", on_click=limpar_tudo, type="secondary", use_container_width=True)
 
-with aba_pessoal:
-    nome = st.text_input("Nome", key="nome")
-    col1, col2 = st.columns(2)
-    with col1:
-        filiacaopai = st.text_input("Filiação (Pai)", key="filiacaopai")
-        rg = st.text_input("RG nº (Apenas números)", key="rg")
-        orgao_emissor = st.selectbox("Órgão Emissor / Estado do RG", [
-            "SSP/SP", "SSP/RJ", "SSP/MG", "SSP/ES", "SSP/BA", "SSP/PR", "SSP/SC", "SSP/RS", 
-            "SSP/GO", "SSP/MT", "SSP/MS", "SSP/DF", "SSP/PE", "SSP/CE", "SSP/MA", "SSP/PB", 
-            "SSP/RN", "SSP/AL", "SSP/SE", "SSP/PI", "SSP/PA", "SSP/AM", "SSP/RO", "SSP/AC", 
-            "SSP/AP", "SSP/RR", "SSP/TO", "Outro"
-        ], key="orgao_emissor")
-        
-        # Campo com Histórico: Profissão
+    st.write("##")
+
+    # Abas com ícones e cores sólidas
+    aba1, aba2, aba3, aba4 = st.tabs(["👤 PESSOAL", "📂 PROCESSO", "⚕️ EQUIPE", "📝 CLÍNICA"])
+
+    with aba1:
+        nome = st.text_input("Nome Completo", key="nome")
+        c1, c2 = st.columns(2)
+        with c1:
+            filiacaopai = st.text_input("Filiação (Pai)", key="filiacaopai")
+            rg = st.text_input("RG", key="rg")
+            cargo_sel = st.selectbox("Histórico Profissão", [""] + st.session_state.hist_cargo)
+            cargo_txt = st.text_input("Nova Profissão", key="cargo_txt")
+            cargo = cargo_txt if cargo_txt else cargo_sel
+        with c2:
+            filiacaomae = st.text_input("Filiação (Mãe)", key="filiacaomae")
+            cpf = st.text_input("CPF", key="cpf")
+            endereco = st.text_input("Endereço", key="endereco")
+
+    with aba2:
+        processo = st.text_input("Nº Processo", key="processo")
+        col3, col4 = st.columns(2)
+        with col3:
+            adv_sel = st.selectbox("Histórico Advogado", [""] + st.session_state.hist_advogado)
+            advogado = st.text_input("Novo Advogado", key="adv_txt") if not adv_sel else adv_sel
+            email_sel = st.selectbox("Histórico E-mail", [""] + st.session_state.hist_email)
+            email = st.text_input("Novo E-mail", key="email_txt") if not email_sel else email_sel
+        with col4:
+            com_sel = st.selectbox("Histórico Comarca", [""] + st.session_state.hist_comarca)
+            comarca = st.text_input("Nova Comarca", key="com_txt") if not com_sel else com_sel
+            oab_sel = st.selectbox("Histórico OAB", [""] + st.session_state.hist_oabn)
+            oabn = st.text_input("Nova OAB", key="oab_txt") if not oab_sel else oab_sel
+            custas_sel = st.selectbox("Histórico Custas", [""] + st.session_state.hist_custas)
+            custas = st.text_input("Nova Custa", key="custas_txt") if not custas_sel else custas_sel
+
+    with aba3:
+        st.subheader("Gerenciamento de Peritos")
+        cp1, cp2 = st.columns([3, 2])
+        with cp1:
+            perito_selecionado = st.selectbox("Banco de Dados de Peritos", options=[""] + st.session_state.lista_peritos, key="sel_p")
+            if st.button("🗑️ REMOVER PERITO", type="secondary"):
+                if perito_selecionado:
+                    st.session_state.lista_peritos.remove(perito_selecionado)
+                    st.rerun()
+        with cp2:
+            novo_p = st.text_input("Cadastrar Novo Perito", key="inp_p", placeholder="Nome, CRM, CPF...")
+            if st.button("➕ ADICIONAR AO BANCO", type="secondary"):
+                if novo_p:
+                    st.session_state.lista_peritos.append(novo_p)
+                    st.rerun()
         st.markdown("---")
-        cargo = campo_com_historico("Profissão", "cargo")
-        
-    with col2:
-        filiacaomae = st.text_input("Filiação (Mãe)", key="filiacaomae")
-        cpf = st.text_input("CPF nº (Digite apenas números)", key="cpf")
-        telefone = st.text_input("Telefone", key="telefone")
+        perito_manual = st.text_input("Perito Principal (Para Ficha)", key="perito_man")
+        peritoesp = st.text_input("Perito Especialista", key="peritoesp")
+        ca1, ca2 = st.columns(2)
+        with ca1: assisa = st.text_input("Assis. Autor", key="assisa")
+        with ca2: assisb = st.text_input("Assis. Réu", key="assisb")
+
+    with aba4:
+        queixa = st.text_area("Queixa", key="queixa")
+        cid_sel = st.selectbox("Histórico CID", [""] + st.session_state.hist_cid10)
+        cid10 = st.text_input("Novo CID", key="cid_txt") if not cid_sel else cid_sel
+        and_sel = st.selectbox("Histórico Andamento", [""] + st.session_state.hist_andamento)
+        andamento = st.text_area("Novo Andamento", key="and_txt") if not and_sel else and_sel
+
+    st.write("##")
+    st.markdown("---")
     
-    st.markdown("---")
-    endereco = st.text_input("Endereço", key="endereco")
+    # Geração de Documentos
+    cf, cp = st.columns(2)
+    with cf:
+        if st.button("📄 GERAR FICHA (FICHA.DOCX)", type="secondary", use_container_width=True):
+            for c, v in [("cargo", cargo), ("comarca", comarca), ("advogado", advogado), ("oabn", oabn), ("email", email), ("custas", custas), ("cid10", cid10), ("andamento", andamento)]:
+                salvar_hist(c, v)
+            try:
+                doc = DocxTemplate("ficha.docx")
+                ctx = {"nome": nome.upper(), "filiacaopai": filiacaopai.upper(), "filiacaomae": filiacaomae.upper(), "rg": rg, "cpf": formatar_cpf(cpf), "cargo": cargo.upper(), "endereço": endereco.upper(), "processo": processo, "comarca": comarca.upper(), "perito": perito_manual.upper(), "peritoesp": peritoesp.upper(), "assisa": assisa.upper(), "assisb": assisb.upper(), "custas": custas, "advogado": advogado.upper(), "oabn": oabn, "email": email.lower(), "queixa": queixa.upper(), "cid10": cid10.upper(), "andamento": andamento.upper()}
+                doc.render(ctx)
+                bio = io.BytesIO()
+                doc.save(bio)
+                st.download_button("📥 BAIXAR FICHA", bio.getvalue(), f"{nome.upper()} FICHA.docx", use_container_width=True)
+            except Exception as e: st.error(f"Erro: {e}")
 
-with aba_processo:
-    col3, col4 = st.columns(2)
-    with col3:
-        processo = st.text_input("Nº do Processo", key="processo")
-        st.markdown("---")
-        # Campos com Histórico
-        advogado = campo_com_historico("Advogado", "advogado")
-        st.markdown("---")
-        email = st.text_input("E-mail", key="email")
-    with col4:
-        # Campos com Histórico
-        comarca = campo_com_historico("Comarca", "comarca")
-        st.markdown("---")
-        oabn = campo_com_historico("OAB Nº", "oabn")
-        st.markdown("---")
-        custas = campo_com_historico("Juntada de Custas", "custas")
-
-with aba_peritos:
-    col5, col6 = st.columns(2)
-    with col5:
-        perito = campo_com_historico("Perito Principal", "perito")
-        st.markdown("---")
-        assisa = campo_com_historico("Assistente Técnico do Autor", "assisa")
-    with col6:
-        peritoesp = campo_com_historico("Perito Especialista", "peritoesp")
-        st.markdown("---")
-        assisb = campo_com_historico("Assistente Técnico do Réu", "assisb")
-
-with aba_medica:
-    queixa = st.text_area("Queixa", key="queixa")
-    st.markdown("---")
-    cid10 = campo_com_historico("CID10 + Patologia", "cid10")
-    st.markdown("---")
-    andamento = campo_com_historico("Andamento", "andamento", is_area=True)
-
-st.markdown("---")
-
-# Botão para gerar o documento
-if st.button("Gerar Ficha Inteligente", type="primary"):
-    
-    # 1. Salvar as novas entradas no arquivo historico.json
-    atualizar_historico("cargo", cargo)
-    atualizar_historico("advogado", advogado)
-    atualizar_historico("comarca", comarca)
-    atualizar_historico("oabn", oabn)
-    atualizar_historico("custas", custas)
-    atualizar_historico("perito", perito)
-    atualizar_historico("peritoesp", peritoesp)
-    atualizar_historico("assisa", assisa)
-    atualizar_historico("assisb", assisb)
-    atualizar_historico("cid10", cid10)
-    atualizar_historico("andamento", andamento)
-
-    # 2. Renderizar o Documento
-    try:
-        doc = DocxTemplate("ficha.docx")
-        
-        contexto = {
-            "nome": nome.upper(),
-            "filiacaopai": filiacaopai.upper(),
-            "filiacaomae": filiacaomae.upper(),
-            "rg": f"{rg} - {orgao_emissor}" if rg else "",
-            "cpf": formatar_cpf(cpf),
-            "cargo": cargo.upper(),
-            "endereço": endereco.upper(),
-            "processo": processo,
-            "comarca": comarca.upper(),
-            "perito": perito.upper(),
-            "peritoesp": peritoesp.upper(),
-            "assisa": assisa.upper(),
-            "assisb": assisb.upper(),
-            "custas": custas,
-            "advogado": advogado.upper(),
-            "oabn": oabn,
-            "email": email.lower(),
-            "queixa": queixa.upper(),
-            "cid10": cid10.upper(),
-            "andamento": andamento.upper()
-        }
-        
-        doc.render(contexto)
-        
-        bio = io.BytesIO()
-        doc.save(bio)
-        
-        nome_arquivo = f"{nome.upper()} {processo} AT.docx"
-        
-        st.success("✅ Ficha gerada com sucesso! Os novos itens já foram salvos no seu histórico.")
-        st.download_button(
-            label="📥 Baixar Documento Preenchido",
-            data=bio.getvalue(),
-            file_name=nome_arquivo,
-            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-        )
-    except Exception as e:
-        st.error(f"Erro ao gerar o documento. Certifique-se de que o arquivo 'ficha.docx' está na mesma pasta. Erro: {e}")
+    with cp:
+        if st.button("⚖️ GERAR NOMEAÇÃO (PERITO.DOCX)", type="primary", use_container_width=True):
+            if perito_selecionado:
+                try:
+                    doc_p = DocxTemplate("perito.docx")
+                    doc_p.render({"perito": perito_selecionado.upper()})
+                    bio_p = io.BytesIO()
+                    doc_p.save(bio_p)
+                    n_arq = perito_selecionado.split("–")[0].split("-")[0].strip().upper()
+                    st.download_button(f"📥 BAIXAR NOMEAÇÃO: {n_arq}", bio_p.getvalue(), f"{n_arq}.docx", use_container_width=True)
+                except Exception as e: st.error(f"Erro: {e}")
+            else: st.warning("Selecione um perito na aba EQUIPE.")
