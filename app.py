@@ -11,64 +11,24 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# --- ESTILIZAÇÃO CSS AVANÇADA ---
+# --- ESTILIZAÇÃO CSS ---
 st.markdown("""
     <style>
-        .block-container {
-            max-width: 1100px;
-            padding-top: 2rem;
-        }
+        .block-container { max-width: 1100px; padding-top: 2rem; }
         .header-banner {
             background-color: #1E3A8A; 
             padding: 25px;
             border-radius: 12px;
             text-align: center;
             margin-bottom: 25px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
-        .header-banner h1 {
-            color: white !important;
-            margin: 0;
-            font-size: 2.2rem;
-            letter-spacing: 1px;
-        }
-        .header-banner p {
-            color: #BFDBFE;
-            margin: 5px 0 0 0;
-            font-size: 1.2rem;
-            font-weight: bold;
-            text-transform: uppercase;
-        }
-        .stTabs [data-baseweb="tab-list"] {
-            gap: 10px;
-            background-color: #F1F5F9;
-            padding: 10px 10px 0 10px;
-            border-radius: 8px;
-        }
-        .stTabs [data-baseweb="tab"] {
-            height: 50px;
-            background-color: #E2E8F0;
-            border-radius: 8px 8px 0 0;
-            color: #475569;
-            font-weight: 600;
-            border: 1px solid #CBD5E1;
-        }
-        .stTabs [aria-selected="true"] {
-            background-color: #1E40AF !important;
-            color: white !important;
-            border: 1px solid #1E40AF;
-        }
-        div.stButton > button[kind="primary"] {
-            background-color: #1E40AF !important;
-            color: white !important;
-            font-weight: bold;
-            border-radius: 8px;
-        }
-        div.stButton > button[kind="secondary"] {
-            background-color: #64748B !important;
-            color: white !important;
-            border-radius: 8px;
-        }
+        .header-banner h1 { color: white !important; margin: 0; font-size: 2.2rem; }
+        .header-banner p { color: #BFDBFE; margin: 5px 0 0 0; font-size: 1.2rem; font-weight: bold; text-transform: uppercase; }
+        .stTabs [data-baseweb="tab-list"] { gap: 10px; background-color: #F1F5F9; padding: 10px 10px 0 10px; border-radius: 8px; }
+        .stTabs [data-baseweb="tab"] { height: 50px; background-color: #E2E8F0; border-radius: 8px 8px 0 0; color: #475569; font-weight: 600; }
+        .stTabs [aria-selected="true"] { background-color: #1E40AF !important; color: white !important; }
+        div.stButton > button[kind="primary"] { background-color: #1E40AF !important; color: white !important; font-weight: bold; }
+        div.stButton > button[kind="secondary"] { background-color: #64748B !important; color: white !important; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -122,33 +82,32 @@ with col_c:
         st.button("🧹 LIMPAR FORMULÁRIO", on_click=limpar_tudo, type="secondary", use_container_width=True)
 
     st.write("##")
-
     aba1, aba2, aba3, aba4 = st.tabs(["👤 PESSOAL", "📂 PROCESSO", "⚕️ EQUIPE", "📝 CLÍNICA"])
 
     with aba1:
-        nome = st.text_input("Nome Completo", key="nome")
+        # APLICAÇÃO DE CAIXA ALTA DIRETA
+        nome = st.text_input("Nome Completo", key="nome").upper()
         c1, c2 = st.columns(2)
         with c1:
-            filiacaopai = st.text_input("Filiação (Pai)", key="filiacaopai")
-            rg = st.text_input("RG", key="rg")
+            filiacaopai = st.text_input("Filiação (Pai)", key="filiacaopai").upper()
+            rg = st.text_input("RG", key="rg").upper()
             cargo_sel = st.selectbox("Histórico Profissão", [""] + st.session_state.hist_cargo)
-            cargo_txt = st.text_input("Nova Profissão", key="cargo_txt")
-            cargo = (cargo_txt if cargo_txt else cargo_sel).upper()
+            cargo_txt = st.text_input("Nova Profissão", key="cargo_txt").upper()
+            cargo = cargo_txt if cargo_txt else cargo_sel
         with c2:
-            filiacaomae = st.text_input("Filiação (Mãe)", key="filiacaomae")
+            filiacaomae = st.text_input("Filiação (Mãe)", key="filiacaomae").upper()
             cpf = st.text_input("CPF", key="cpf")
-            # CAMPO ENDEREÇO AMPLIADO
-            endereco = st.text_area("Endereço Completo", key="endereco", height=100)
+            endereco = st.text_area("Endereço Completo", key="endereco", height=100).upper()
 
     with aba2:
-        processo = st.text_input("Nº Processo", key="processo")
+        processo = st.text_input("Nº Processo", key="processo").upper()
         col3, col4 = st.columns(2)
         with col3:
             adv_sel = st.selectbox("Histórico Advogado", [""] + st.session_state.hist_advogado)
             advogado = (st.text_input("Novo Advogado", key="adv_txt") if not adv_sel else adv_sel).upper()
             email_sel = st.selectbox("Histórico E-mail", [""] + st.session_state.hist_email)
-            email_val = (st.text_input("Novo E-mail", key="email_txt") if not email_sel else email_sel)
-            email = email_val.lower() # FORÇAR MINÚSCULO
+            # APLICAÇÃO DE CAIXA BAIXA NO E-MAIL
+            email = (st.text_input("Novo E-mail", key="email_txt") if not email_sel else email_sel).lower()
         with col4:
             com_sel = st.selectbox("Histórico Comarca", [""] + st.session_state.hist_comarca)
             comarca = (st.text_input("Nova Comarca", key="com_txt") if not com_sel else com_sel).upper()
@@ -167,20 +126,20 @@ with col_c:
                     st.session_state.lista_peritos.remove(perito_selecionado)
                     st.rerun()
         with cp2:
-            novo_p = st.text_input("Cadastrar Novo Perito", key="inp_p", placeholder="Nome, CRM, CPF...")
+            novo_p = st.text_input("Cadastrar Novo Perito", key="inp_p").upper()
             if st.button("➕ ADICIONAR AO BANCO", type="secondary"):
                 if novo_p:
-                    st.session_state.lista_peritos.append(novo_p.upper())
+                    st.session_state.lista_peritos.append(novo_p)
                     st.rerun()
         st.markdown("---")
-        perito_manual = st.text_input("Perito Principal (Para Ficha)", key="perito_man")
-        peritoesp = st.text_input("Perito Especialista", key="peritoesp")
+        perito_manual = st.text_input("Perito Principal (Para Ficha)", key="perito_man").upper()
+        peritoesp = st.text_input("Perito Especialista", key="peritoesp").upper()
         ca1, ca2 = st.columns(2)
-        with ca1: assisa = st.text_input("Assis. Autor", key="assisa")
-        with ca2: assisb = st.text_input("Assis. Réu", key="assisb")
+        with ca1: assisa = st.text_input("Assis. Autor", key="assisa").upper()
+        with ca2: assisb = st.text_input("Assis. Réu", key="assisb").upper()
 
     with aba4:
-        queixa = st.text_area("Queixa", key="queixa")
+        queixa = st.text_area("Queixa", key="queixa").upper()
         cid_sel = st.selectbox("Histórico CID", [""] + st.session_state.hist_cid10)
         cid10 = (st.text_input("Novo CID", key="cid_txt") if not cid_sel else cid_sel).upper()
         and_sel = st.selectbox("Histórico Andamento", [""] + st.session_state.hist_andamento)
@@ -196,20 +155,19 @@ with col_c:
                 salvar_hist(c, v)
             try:
                 doc = DocxTemplate("ficha.docx")
-                # CONVERSÃO PARA MAIÚSCULO NO CONTEXTO
                 ctx = {
-                    "nome": nome.upper(), "filiacaopai": filiacaopai.upper(), "filiacaomae": filiacaomae.upper(), 
-                    "rg": rg.upper(), "cpf": formatar_cpf(cpf), "cargo": cargo.upper(), "endereço": endereco.upper(), 
-                    "processo": processo.upper(), "comarca": comarca.upper(), "perito": perito_manual.upper(), 
-                    "peritoesp": peritoesp.upper(), "assisa": assisa.upper(), "assisb": assisb.upper(), 
-                    "custas": custas.upper(), "advogado": advogado.upper(), "oabn": oabn.upper(), 
-                    "email": email.lower(), "queixa": queixa.upper(), "cid10": cid10.upper(), "andamento": andamento.upper()
+                    "nome": nome, "filiacaopai": filiacaopai, "filiacaomae": filiacaomae, 
+                    "rg": rg, "cpf": formatar_cpf(cpf), "cargo": cargo, "endereço": endereco, 
+                    "processo": processo, "comarca": comarca, "perito": perito_manual, 
+                    "peritoesp": peritoesp, "assisa": assisa, "assisb": assisb, 
+                    "custas": custas, "advogado": advogado, "oabn": oabn, 
+                    "email": email, "queixa": queixa, "cid10": cid10, "andamento": andamento
                 }
                 doc.render(ctx)
                 bio = io.BytesIO()
                 doc.save(bio)
-                # NOME DO ARQUIVO CONFORME SOLICITADO
-                nome_doc = f"{nome.upper()} {processo.upper()} AT.docx"
+                # FORMATAÇÃO DO NOME DO ARQUIVO: NOME PROCESSO AT.docx
+                nome_doc = f"{nome} {processo} AT.docx"
                 st.download_button("📥 BAIXAR FICHA", bio.getvalue(), nome_doc, use_container_width=True)
             except Exception as e: st.error(f"Erro: {e}")
 
