@@ -52,8 +52,13 @@ for c in campos_hist:
 
 # --- FUNÇÕES ---
 def limpar_tudo():
+    """Limpa todos os campos de entrada (widgets), mas mantém o banco de dados de históricos e peritos."""
+    # Lista de prefixos de chaves que NÃO devem ser limpas (os dados do banco)
+    preservar = ['lista_peritos'] + [f"hist_{c}" for c in campos_hist]
+    
     for key in list(st.session_state.keys()):
-        if key not in ['lista_peritos'] + [f"hist_{c}" for c in campos_hist]:
+        if key not in preservar:
+            # Reseta o valor no session_state para vazio
             st.session_state[key] = ""
 
 def formatar_cpf(cpf):
@@ -85,13 +90,12 @@ with col_c:
     aba1, aba2, aba3, aba4 = st.tabs(["👤 PESSOAL", "📂 PROCESSO", "⚕️ EQUIPE", "📝 CLÍNICA"])
 
     with aba1:
-        # APLICAÇÃO DE CAIXA ALTA DIRETA
         nome = st.text_input("Nome Completo", key="nome").upper()
         c1, c2 = st.columns(2)
         with c1:
             filiacaopai = st.text_input("Filiação (Pai)", key="filiacaopai").upper()
             rg = st.text_input("RG", key="rg").upper()
-            cargo_sel = st.selectbox("Histórico Profissão", [""] + st.session_state.hist_cargo)
+            cargo_sel = st.selectbox("Histórico Profissão", [""] + st.session_state.hist_cargo, key="sel_cargo")
             cargo_txt = st.text_input("Nova Profissão", key="cargo_txt").upper()
             cargo = cargo_txt if cargo_txt else cargo_sel
         with c2:
@@ -103,17 +107,16 @@ with col_c:
         processo = st.text_input("Nº Processo", key="processo").upper()
         col3, col4 = st.columns(2)
         with col3:
-            adv_sel = st.selectbox("Histórico Advogado", [""] + st.session_state.hist_advogado)
+            adv_sel = st.selectbox("Histórico Advogado", [""] + st.session_state.hist_advogado, key="sel_adv")
             advogado = (st.text_input("Novo Advogado", key="adv_txt") if not adv_sel else adv_sel).upper()
-            email_sel = st.selectbox("Histórico E-mail", [""] + st.session_state.hist_email)
-            # APLICAÇÃO DE CAIXA BAIXA NO E-MAIL
+            email_sel = st.selectbox("Histórico E-mail", [""] + st.session_state.hist_email, key="sel_email")
             email = (st.text_input("Novo E-mail", key="email_txt") if not email_sel else email_sel).lower()
         with col4:
-            com_sel = st.selectbox("Histórico Comarca", [""] + st.session_state.hist_comarca)
+            com_sel = st.selectbox("Histórico Comarca", [""] + st.session_state.hist_comarca, key="sel_com")
             comarca = (st.text_input("Nova Comarca", key="com_txt") if not com_sel else com_sel).upper()
-            oab_sel = st.selectbox("Histórico OAB", [""] + st.session_state.hist_oabn)
+            oab_sel = st.selectbox("Histórico OAB", [""] + st.session_state.hist_oabn, key="sel_oab")
             oabn = (st.text_input("Nova OAB", key="oab_txt") if not oab_sel else oab_sel).upper()
-            custas_sel = st.selectbox("Histórico Custas", [""] + st.session_state.hist_custas)
+            custas_sel = st.selectbox("Histórico Custas", [""] + st.session_state.hist_custas, key="sel_custas")
             custas = (st.text_input("Nova Custa", key="custas_txt") if not custas_sel else custas_sel).upper()
 
     with aba3:
@@ -140,9 +143,9 @@ with col_c:
 
     with aba4:
         queixa = st.text_area("Queixa", key="queixa").upper()
-        cid_sel = st.selectbox("Histórico CID", [""] + st.session_state.hist_cid10)
+        cid_sel = st.selectbox("Histórico CID", [""] + st.session_state.hist_cid10, key="sel_cid")
         cid10 = (st.text_input("Novo CID", key="cid_txt") if not cid_sel else cid_sel).upper()
-        and_sel = st.selectbox("Histórico Andamento", [""] + st.session_state.hist_andamento)
+        and_sel = st.selectbox("Histórico Andamento", [""] + st.session_state.hist_andamento, key="sel_and")
         andamento = (st.text_area("Novo Andamento", key="and_txt") if not and_sel else and_sel).upper()
 
     st.write("##")
@@ -166,7 +169,6 @@ with col_c:
                 doc.render(ctx)
                 bio = io.BytesIO()
                 doc.save(bio)
-                # FORMATAÇÃO DO NOME DO ARQUIVO: NOME PROCESSO AT.docx
                 nome_doc = f"{nome} {processo} AT.docx"
                 st.download_button("📥 BAIXAR FICHA", bio.getvalue(), nome_doc, use_container_width=True)
             except Exception as e: st.error(f"Erro: {e}")
