@@ -154,7 +154,7 @@ with col_c:
     with cf:
         if st.button("📄 GERAR FICHA (FICHA.DOCX)", use_container_width=True):
             if not os.path.exists("ficha.docx"):
-                st.error("ERRO CRÍTICO: O arquivo 'ficha.docx' não foi encontrado no GitHub/servidor.")
+                st.error("Arquivo 'ficha.docx' não encontrado no diretório.")
             else:
                 for c, v in [("cargo", cargo), ("comarca", comarca), ("advogado", advogado), ("oabn", oabn), ("email", email), ("cid10", cid10)]:
                     salvar_hist(c, v)
@@ -178,7 +178,7 @@ with col_c:
     with cp:
         if st.button("⚖️ GERAR NOMEAÇÃO", type="primary", use_container_width=True):
             if not os.path.exists("perito.docx"):
-                st.error("ERRO CRÍTICO: O arquivo 'perito.docx' não foi encontrado.")
+                st.error("Arquivo 'perito.docx' não encontrado.")
             elif perito_selecionado:
                 try:
                     doc_p = DocxTemplate("perito.docx")
