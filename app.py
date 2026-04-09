@@ -40,10 +40,8 @@ st.markdown("""
 
 # --- INICIALIZAÇÃO DO ESTADO ---
 if 'lista_peritos' not in st.session_state:
-    # Recomenda-se preencher com dados fictícios para subir ao GitHub
-    st.session_state.lista_peritos = [
-        "EXEMPLO: DR. NOME DO PERITO – CRM: 000000, CPF: 000.000.000-00"
-    ]
+    # Lista inicial vazia ou com exemplos para segurança no GitHub
+    st.session_state.lista_peritos = []
 
 campos_hist = ["cargo", "comarca", "advogado", "oabn", "email", "custas", "cid10", "andamento"]
 for c in campos_hist:
@@ -52,7 +50,7 @@ for c in campos_hist:
 
 # --- FUNÇÕES ---
 def limpar_formulario():
-    """Limpa os campos de entrada sem apagar o banco de peritos ou histórico."""
+    """Limpa apenas os campos de preenchimento, preservando o banco de peritos."""
     chaves_input = [
         'nome', 'filiacaopai', 'filiacaomae', 'rg', 'cpf', 'endereco', 'processo',
         'cargo_txt', 'adv_txt', 'email_txt', 'com_txt', 'oab_txt', 'custas_txt',
@@ -75,7 +73,8 @@ def formatar_telefone(ddd, numero):
 def salvar_hist(campo, valor):
     if valor and str(valor).strip():
         chave = f"hist_{campo}"
-        valor_limpo = str(valor).strip().upper() if campo != "email" else str(valor).strip().lower()
+        # Salva em CAIXA BAIXA apenas se for e-mail, o resto é CAIXA ALTA
+        valor_limpo = str(valor).strip().lower() if campo == "email" else str(valor).strip().upper()
         if valor_limpo not in st.session_state[chave]:
             st.session_state[chave].append(valor_limpo)
 
@@ -85,7 +84,7 @@ st.markdown('<div class="header-banner"><h1>FICHA INTELIGENTE</h1><p>TJ/SP - PER
 col_e, col_c, col_d = st.columns([0.5, 9, 0.5])
 
 with col_c:
-    st.button("🧹 LIMPAR APENAS CAMPOS (NOVA FICHA)", on_click=limpar_formulario, type="secondary")
+    st.button("🧹 LIMPAR FORMULÁRIO (INICIAR NOVA FICHA)", on_click=limpar_formulario, type="secondary")
     
     aba1, aba2, aba3, aba4 = st.tabs(["👤 PESSOAL", "📂 PROCESSO", "⚕️ EQUIPE", "📝 CLÍNICA"])
 
@@ -119,9 +118,9 @@ with col_c:
             com_txt = st.text_input("Nova Comarca", key="com_txt").upper()
             comarca = com_txt if com_txt else com_sel
 
-            # Telefone do Advogado com DDD
+            # Telefone com Seletor de DDD (Padrão DDD 13 - Santos)
             c_ddd, c_num = st.columns([1, 3])
-            with c_ddd: ddd_adv = st.selectbox("DDD", DDDS_BRASIL, index=2) # Index 2 = DDD 13
+            with c_ddd: ddd_adv = st.selectbox("DDD", DDDS_BRASIL, index=2) 
             with c_num: tel_raw = st.text_input("Telefone Advogado", key="tel_adv")
             tel_advogado = formatar_telefone(ddd_adv, tel_raw)
 
@@ -134,17 +133,18 @@ with col_c:
         cp1, cp2 = st.columns([3, 2])
         with cp1:
             perito_selecionado = st.selectbox("Banco de Dados de Peritos", [""] + st.session_state.lista_peritos)
-            if st.button("🗑️ REMOVER PERITO"):
+            if st.button("🗑️ REMOVER PERITO DO BANCO"):
                 if perito_selecionado:
                     st.session_state.lista_peritos.remove(perito_selecionado)
                     st.rerun()
         with cp2:
-            novo_p = st.text_input("Cadastrar Novo Perito (NOME, CRM, CPF, RG, NIT)").upper()
-            if st.button("➕ ADICIONAR"):
+            novo_p = st.text_input("Cadastrar Novo Perito (NOME, CRM, CPF)").upper()
+            if st.button("➕ ADICIONAR AO BANCO"):
                 if novo_p:
                     st.session_state.lista_peritos.append(novo_p)
                     st.rerun()
-        perito_manual = st.text_input("Perito Principal (Ficha)", key="perito_man").upper()
+        st.markdown("---")
+        perito_manual = st.text_input("Perito Principal (Para Ficha)", key="perito_man").upper()
         peritoesp = st.text_input("Perito Especialista", key="peritoesp").upper()
 
     with aba4:
@@ -156,12 +156,11 @@ with col_c:
         and_txt = st.text_area("Novo Andamento", key="and_txt").upper()
         andamento = and_txt if and_txt else and_sel
 
-    # --- BOTÕES DE GERAÇÃO ---
     st.markdown("---")
     cf, cp = st.columns(2)
     with cf:
         if st.button("📄 GERAR FICHA (FICHA.DOCX)", use_container_width=True):
-            # Salva históricos
+            # Salva históricos e gera documento
             for c, v in [("cargo", cargo), ("comarca", comarca), ("advogado", advogado), 
                          ("oabn", oabn), ("email", email), ("cid10", cid10)]:
                 salvar_hist(c, v)
@@ -172,24 +171,26 @@ with col_c:
                     "rg": rg, "cpf": formatar_cpf(cpf), "cargo": cargo, "endereço": endereco, 
                     "processo": processo, "comarca": comarca, "perito": perito_manual, 
                     "peritoesp": peritoesp, "advogado": advogado, "oabn": oabn, 
-                    "email": email, "telefone_adv": tel_advogado, "queixa": queixa, 
+                    "email": email, "telefone": tel_advogado, "queixa": queixa, 
                     "cid10": cid10, "andamento": andamento
                 }
                 doc.render(ctx)
                 bio = io.BytesIO()
                 doc.save(bio)
                 st.download_button("📥 BAIXAR FICHA", bio.getvalue(), f"{nome} {processo} AT.docx", use_container_width=True)
-            except Exception as e: st.error(f"Erro: {e}")
+            except Exception as e: # CORREÇÃO: ADICIONADO 'as e'
+                st.error(f"Erro ao gerar ficha: {e}")
 
     with cp:
         if st.button("⚖️ GERAR NOMEAÇÃO", type="primary", use_container_width=True):
             if perito_selecionado:
                 try:
                     doc_p = DocxTemplate("perito.docx")
-                    doc_p.render({"perito": perito_selecionado})
+                    doc_p.render({"perito": perito_selecionado.upper()})
                     bio_p = io.BytesIO()
                     doc_p.save(bio_p)
                     n_arq = perito_selecionado.split("–")[0].strip().upper()
                     st.download_button(f"📥 BAIXAR NOMEAÇÃO", bio_p.getvalue(), f"{n_arq}.docx", use_container_width=True)
-                except Exception as e: st.error(f"Erro: {e}")
+                except Exception as e: # CORREÇÃO: ADICIONADO 'as e'
+                    st.error(f"Erro ao gerar nomeação: {e}")
             else: st.warning("Selecione um perito na aba EQUIPE.")
