@@ -58,15 +58,11 @@ zoom = st.session_state.zoom_level / 100
 st.markdown(f"""
     <style>
         .stApp {{ background-color: {tm['bg']}; zoom: {zoom}; }}
-        
-        /* Títulos dos campos (Labels) */
         .stMarkdown p, label, .stWidgetLabel p {{
             color: {tm['text_label']} !important;
             font-weight: 500 !important;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }}
-
-        /* Campos de Entrada (Input e Textarea) */
         input, textarea {{
             background-color: {tm['input_bg']} !important;
             color: {tm['input_text']} !important;
@@ -74,17 +70,11 @@ st.markdown(f"""
             border-radius: 6px !important;
             text-transform: uppercase;
         }}
-        
-        /* Placeholder (Exemplo de texto apagado) */
         ::placeholder {{ color: #94A3B8 !important; opacity: 1; }}
-
-        /* Selectbox / Histórico */
         div[data-baseweb="select"] > div {{
             background-color: {tm['input_bg']} !important;
             color: {tm['input_text']} !important;
         }}
-        
-        /* Banner superior */
         .header-banner {{
             background-color: {tm['card']};
             padding: 1.5rem;
@@ -94,17 +84,17 @@ st.markdown(f"""
             margin-bottom: 2rem;
         }}
         .header-banner h1 {{ color: #F8FAFC !important; font-size: 1.5rem; }}
-
-        /* Ajuste específico para e-mail não ser uppercase */
         input[type="email"] {{ text-transform: none !important; }}
     </style>
 """, unsafe_allow_html=True)
 
 # --- FUNÇÕES ---
 def limpar_tudo():
+    """Remove chaves do session_state vinculadas a widgets para resetar o formulário."""
+    manter = ['lista_peritos', 'notas_diarias', 'zoom_level', 'tema_escolhido'] + [f"hist_{c}" for c in campos_hist]
     for key in list(st.session_state.keys()):
-        if key not in ['lista_peritos', 'notas_diarias', 'zoom_level', 'tema_escolhido'] + [f"hist_{c}" for c in campos_hist]:
-            st.session_state[key] = ""
+        if key not in manter:
+            del st.session_state[key]
 
 def formatar_cpf(cpf):
     c = re.sub(r'\D', '', cpf)
@@ -123,9 +113,16 @@ with st.sidebar:
     st.subheader("ACESSIBILIDADE")
     cz1, cz2 = st.columns(2)
     with cz1: 
-        if st.button("➕ ZOOM"): st.session_state.zoom_level += 5; salvar_no_disco(); st.rerun()
+        if st.button("➕ ZOOM"): 
+            st.session_state.zoom_level += 5
+            salvar_no_disco()
+            st.rerun()
     with cz2: 
-        if st.button("➖ ZOOM"): st.session_state.zoom_level -= 5; salvar_no_disco(); st.rerun()
+        if st.button("➖ ZOOM"): 
+            if st.session_state.zoom_level > 50:
+                st.session_state.zoom_level -= 5
+                salvar_no_disco()
+                st.rerun()
     
     st.divider()
     st.subheader("📓 BLOCO DE NOTAS")
@@ -148,7 +145,7 @@ with c_corpo:
         with c1:
             filiacaopai = st.text_input("Filiação (Pai)", placeholder="NOME DO PAI", key="f_pai").upper()
             rg = st.text_input("RG", placeholder="00.000.000-0", key="rg").upper()
-            cargo_sel = st.selectbox("Histórico de Profissão", [""] + st.session_state.hist_cargo)
+            cargo_sel = st.selectbox("Histórico de Profissão", [""] + st.session_state.hist_cargo, key="sel_cargo")
             cargo_txt = st.text_input("Nova Profissão", key="c_txt").upper()
             cargo = cargo_txt if cargo_txt else cargo_sel
         with c2:
@@ -160,28 +157,28 @@ with c_corpo:
         processo = st.text_input("Nº Processo", placeholder="0000000-00.202X.8.26.0562", key="proc").upper()
         col3, col4 = st.columns(2)
         with col3:
-            adv_sel = st.selectbox("Histórico Advogado", [""] + st.session_state.hist_advogado)
+            adv_sel = st.selectbox("Histórico Advogado", [""] + st.session_state.hist_advogado, key="sel_adv")
             advogado = (st.text_input("Nome Advogado", key="adv_t") if not adv_sel else adv_sel).upper()
-            email_sel = st.selectbox("Histórico E-mail", [""] + st.session_state.hist_email)
+            email_sel = st.selectbox("Histórico E-mail", [""] + st.session_state.hist_email, key="sel_email")
             email = (st.text_input("E-mail para contato", key="mail_t") if not email_sel else email_sel).lower()
         with col4:
-            com_sel = st.selectbox("Histórico Comarca", [""] + st.session_state.hist_comarca)
+            com_sel = st.selectbox("Histórico Comarca", [""] + st.session_state.hist_comarca, key="sel_com")
             comarca = (st.text_input("Comarca", key="com_t") if not com_sel else com_sel).upper()
-            oab_sel = st.selectbox("Histórico OAB", [""] + st.session_state.hist_oabn)
+            oab_sel = st.selectbox("Histórico OAB", [""] + st.session_state.hist_oabn, key="sel_oab")
             oabn = (st.text_input("Nº OAB", key="oab_t") if not oab_sel else oab_sel).upper()
-            custas_sel = st.selectbox("Histórico Custas", [""] + st.session_state.hist_custas)
+            custas_sel = st.selectbox("Histórico Custas", [""] + st.session_state.hist_custas, key="sel_cus")
             custas = (st.text_input("Custas", key="cus_t") if not custas_sel else custas_sel).upper()
 
     with aba3:
         st.subheader("Gerenciamento de Peritos")
         cp1, cp2 = st.columns([3, 2])
         with cp1:
-            perito_selecionado = st.selectbox("Banco de Dados", options=[""] + st.session_state.lista_peritos)
+            perito_selecionado = st.selectbox("Banco de Dados", options=[""] + st.session_state.lista_peritos, key="sel_perito_bd")
             if st.button("🗑️ REMOVER PERITO SELECIONADO"):
                 if perito_selecionado:
                     st.session_state.lista_peritos.remove(perito_selecionado); salvar_no_disco(); st.rerun()
         with cp2:
-            novo_p = st.text_input("Novo Perito (Nome, CRM, CPF)").upper()
+            novo_p = st.text_input("Novo Perito (Nome, CRM, CPF)", key="novo_perito_input").upper()
             if st.button("➕ ADICIONAR AO BANCO"):
                 if novo_p:
                     st.session_state.lista_peritos.append(novo_p); salvar_no_disco(); st.rerun()
@@ -194,9 +191,9 @@ with c_corpo:
 
     with aba4:
         queixa = st.text_area("Queixa e Histórico", placeholder="DESCREVA A QUEIXA DO PACIENTE...", key="quei", height=150).upper()
-        cid_sel = st.selectbox("Histórico CID", [""] + st.session_state.hist_cid10)
+        cid_sel = st.selectbox("Histórico CID", [""] + st.session_state.hist_cid10, key="sel_cid")
         cid10 = (st.text_input("Código CID-10", key="cid_t") if not cid_sel else cid_sel).upper()
-        and_sel = st.selectbox("Histórico Andamento", [""] + st.session_state.hist_andamento)
+        and_sel = st.selectbox("Histórico Andamento", [""] + st.session_state.hist_andamento, key="sel_and")
         andamento = (st.text_area("Descrição Andamento", key="and_t", height=100) if not and_sel else and_sel).upper()
 
     st.markdown("<br>", unsafe_allow_html=True)
@@ -223,8 +220,9 @@ with c_corpo:
                     n_arq = perito_selecionado.split("–")[0].strip()
                     st.download_button("📥 BAIXAR NOMEAÇÃO", bio_p.getvalue(), f"NOMEACAO_{n_arq}.docx", use_container_width=True)
                 except Exception as e: st.error(f"Erro: {e}")
-            else: st.warning("Selecione um perito.")
+            else: st.warning("Selecione um perito no Banco de Dados.")
 
     with b3:
         if st.button("⚠️ LIMPAR TUDO", use_container_width=True):
-            limpar_tudo(); st.rerun()
+            limpar_tudo()
+            st.rerun()
